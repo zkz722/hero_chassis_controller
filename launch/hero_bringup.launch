@@ -1,0 +1,22 @@
+<launch>
+  <arg name="paused" default="false"/>
+  <include file="$(find rm_description_for_task)/launch/hero.launch">
+    <arg name="load_chassis" value="true"/>
+    <arg name="roller_type" value="realistic"/>
+    <arg name="paused" value="$(arg paused)"/>
+  </include>
+
+  <!-- 加载yaml 配置文件 -->
+  <rosparam file="$(find hero_chassis_controller)/config/hero_controller.yaml" command="load"/>
+  
+  <!-- 启动控制器插件 -->
+  <node name="hero_controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
+        output="screen" args="
+        hero_chassis_controller
+        joint_state_controller
+  "/>
+
+    <!-- 启动 RViz 并加载你的里程计配置 -->
+  <node name="rviz" pkg="rviz" type="rviz" 
+        args="-d $(find hero_chassis_controller)/rviz/hero_odom.rviz" />
+</launch>

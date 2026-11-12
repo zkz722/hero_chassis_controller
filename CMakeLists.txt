@@ -21,18 +21,24 @@ find_package(catkin REQUIRED COMPONENTS
     geometry_msgs
     nav_msgs
     tf
+    dynamic_reconfigure
 )
 
 ## Find system libraries
 find_package(Eigen3 REQUIRED)
 find_package(Boost REQUIRED)
 
+# 生成动态参数代码
+generate_dynamic_reconfigure_options(
+    cfg/HeroChassisController.cfg
+)
+
 ###################################
 ## catkin specific configuration ##
 ###################################
 catkin_package(
     INCLUDE_DIRS include
-    CATKIN_DEPENDS roscpp rospy std_msgs sensor_msgs controller_interface hardware_interface pluginlib control_toolbox geometry_msgs nav_msgs tf
+    CATKIN_DEPENDS roscpp rospy std_msgs sensor_msgs controller_interface hardware_interface pluginlib control_toolbox geometry_msgs nav_msgs tf dynamic_reconfigure
 )
 
 ###########
@@ -52,6 +58,7 @@ add_library(${PROJECT_NAME}
 
 ## 添加依赖
 add_dependencies(${PROJECT_NAME}
+    ${${PROJECT_NAME}_EXPORTED_TARGETS}  # 确保你生成的头文件先被编译
     ${catkin_EXPORTED_TARGETS}
 )
 
@@ -76,7 +83,7 @@ install(DIRECTORY include/${PROJECT_NAME}/
     FILES_MATCHING PATTERN "*.h"
 )
 
-# if (CATKIN_ENABLE_TESTING)
-#   catkin_add_gtest(${PROJECT_NAME}-test test/test_hero_chassis_controller.cpp)
-#   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME} ${catkin_LIBRARIES})
-# endif ()
+# 安装 launch 和 config 文件夹 
+install(DIRECTORY launch config
+    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)

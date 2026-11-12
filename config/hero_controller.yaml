@@ -1,0 +1,22 @@
+hero_chassis_controller:
+  type: hero_chassis_controller/HeroChassisController
+  use_global_frame: true  # false为车体模式，true为世界模式
+
+    # 底盘机械参数
+  wheel_radius: 0.1       # 轮子半径 (m)
+  wheel_separation_x: 0.3 # 前后轮轴距 (m)
+  wheel_separation_y: 0.3 # 左右轮轴距 (m)
+
+  # 四个轮子的 PID 参数 (P, I, D, i_max, i_min)
+  # P: 比例，I: 积分，D: 微分。i_clamp 用于防止积分爆炸
+  front_left_pid:  {p: 50.0, i: 0.1, d: 0.05, i_clamp_max: 50.0, i_clamp_min: -50.0}
+  front_right_pid: {p: 50.0, i: 0.1, d: 0.05, i_clamp_max: 50.0, i_clamp_min: -50.0}
+  back_left_pid:   {p: 50.0, i: 0.1, d: 0.05, i_clamp_max: 50.0, i_clamp_min: -50.0}
+  back_right_pid:  {p: 50.0, i: 0.1, d: 0.05, i_clamp_max: 50.0, i_clamp_min: -50.0}
+  max_accel: 0.5 # 最大加速度 (m/s^2)
+  
+
+# 保留joint_state_controller（用于发布轮子关节状态）
+joint_state_controller:
+  type: joint_state_controller/JointStateController
+  publish_rate: 50
