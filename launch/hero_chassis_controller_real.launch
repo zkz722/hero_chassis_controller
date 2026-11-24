@@ -1,0 +1,30 @@
+<launch>
+  <!-- 1. 加载机器人的 URDF 模型到参数服务器 -->
+  <!-- 注意：实车不需要启动 Gazebo，但需要加载 robot_description -->
+  <include file="$(find rm_description_for_task)/launch/hero.launch">
+    <arg name="load_chassis" value="true"/>
+    <arg name="roller_type" value="realistic"/>
+    <!-- 实车不需要 paused 参数，因为不启动 Gazebo -->
+  </include>
+
+  <!-- 2. 加载硬件接口 (rm_hw) 及 CAN 总线配置 -->
+  <!-- 这里需要你根据实际的电调 ID 配置 rm_hw 的参数 -->
+  <rosparam file="$(find rm_config)/config/rm_hw/hero.yaml" command="load" />
+  
+  <!-- 启动 rm_hw 节点 -->
+  <node name="rm_hw" pkg="rm_hw" type="rm_hw" respawn="false" output="screen" />
+
+  <!-- 3. 加载控制器的 YAML 配置文件 -->
+  <rosparam file="$(find hero_chassis_controller)/config/hero_controller.yaml" command="load"/>
+  
+  <!-- 4. 启动控制器插件 -->
+  <node name="hero_controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
+        output="screen" args="
+        hero_chassis_controller
+        joint_state_controller
+  "/>
+
+  <!-- 可选：如果你实车也要看 RViz，可以保留 -->
+  <node name="rviz" pkg="rviz" type="rviz" 
+        args="-d $(find hero_chassis_controller)/rviz/hero_odom.rviz" />
+</launch>

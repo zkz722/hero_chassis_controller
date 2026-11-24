@@ -49,7 +49,7 @@ source devel/setup.bash
 ### 实车模式
 
 ```bash
-roslaunch hero_chassis_controller hero_chassis_controller.launch
+roslaunch hero_chassis_controller hero_chassis_controller_real.launch
 ```
 
 启动流程：
@@ -59,7 +59,7 @@ roslaunch hero_chassis_controller hero_chassis_controller.launch
 ### 仿真模式
 
 ```bash
-roslaunch hero_chassis_controller hero_chassis_controller_sim.launch
+roslaunch hero_chassis_controller hero_chassis_controller.launch
 ```
 
 启动 Gazebo + `gazebo_ros_control` 插件，控制器代码无需修改。
@@ -91,7 +91,7 @@ roslaunch hero_chassis_controller hero_chassis_controller_sim.launch
 | 模式 | 硬件接口 | Launch 文件 | 底层 |
 |------|---------|------------|------|
 | 实车 | `rm_hw` + CAN | `*_real.launch` | M3508 电机 |
-| 仿真 | `gazebo_ros_control` | `*_sim.launch` | Gazebo 模型 |
+| 仿真 | `gazebo_ros_control` | `*.launch` | Gazebo 模型 |
 
 控制器代码在两种模式下完全一致，体现了 `ros_control` 架构的解耦优势。
 
