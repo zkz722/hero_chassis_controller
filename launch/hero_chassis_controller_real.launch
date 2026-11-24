@@ -1,10 +1,7 @@
 <launch>
   <!-- 加载机器人的 URDF 模型到参数服务器 -->
   <!-- 注意：实车不需要启动 Gazebo，但需要加载 robot_description -->
-  <include file="$(find rm_description_for_task)/launch/hero.launch">
-    <arg name="load_chassis" value="true"/>
-    <arg name="roller_type" value="realistic"/>
-  </include>
+  <param name="robot_description" command="$(find xacro)/xacro $(find rm_description_for_task)/urdf/hero/hero.urdf.xacro load_chassis:=true roller_type:=realistic" />
 
   <!-- 加载硬件接口 (rm_hw) 及 CAN 总线配置 -->
   <!-- 这里需要根据实际的电调 ID 配置 rm_hw 的参数 -->
