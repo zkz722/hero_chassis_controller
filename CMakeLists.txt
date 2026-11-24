@@ -22,6 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
     nav_msgs
     tf
     dynamic_reconfigure
+    realtime_tools
 )
 
 ## Find system libraries
