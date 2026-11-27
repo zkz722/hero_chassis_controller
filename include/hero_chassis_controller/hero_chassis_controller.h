@@ -92,6 +92,7 @@ private:
     double wheel_separation_y_;
 
     double max_accel_;
+    double max_effort_ = 3.0;  // 单个轮子的力矩硬限幅 (N·m)，防止 PID 输出失控
     double current_vx_ = 0.0; // 当前平滑后的速度
     double current_vy_ = 0.0;
 };

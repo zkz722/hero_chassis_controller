@@ -5,12 +5,15 @@
 
   <!-- 加载硬件接口 (rm_hw) 及 CAN 总线配置 -->
   <!-- 这里需要根据实际的电调 ID 配置 rm_hw 的参数 -->
-  <rosparam file="$(find hero_chassis_controller)/config/hero_hw_config.yaml" command="load" ns="rm_hw"/>
-  <rosparam file="$(find hero_chassis_controller)/config/hero_actuator_coeff.yaml" command="load" ns="rm_hw"/>
+  <rosparam file="$(find hero_chassis_controller)/config/hero_hw_config.yaml" command="load"/>
   <rosparam file="$(find hero_chassis_controller)/config/hero_controller.yaml" command="load"/>
-  
+
   <!-- 启动 rm_hw 节点 -->
-  <node name="rm_hw" pkg="rm_hw" type="rm_hw" respawn="false" output="screen" />
+  <!-- 注意：rm_hw 是在 ~ 私有命名空间（/rm_hw）下读参数的，
+       所以 actuator_coefficient 必须加载到节点内部，不能放在外面 -->
+  <node name="rm_hw" pkg="rm_hw" type="rm_hw" respawn="false" output="screen">
+    <rosparam file="$(find hero_chassis_controller)/config/hero_actuator_coeff.yaml" command="load"/>
+  </node>
   
   <!-- 启动控制器插件 -->
   <node name="hero_controller_spawner" pkg="controller_manager" type="spawner" respawn="false"

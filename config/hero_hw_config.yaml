@@ -3,8 +3,25 @@ rm_hw:
     - can0
   loop_frequency: 1000
   cycle_time_error_threshold: 0.001
-  # Configurations of the actuators
+  thread_priority: 99
+
+  # 名字必须和 URDF 里 <transmission> 的 <actuator name="..."> 完全一致
   actuators:
+    left_front_wheel_motor:
+      bus: can0
+      id: 0x201
+      type: rm_3508
+      lp_cutoff_frequency: 150
+    left_back_wheel_motor:
+      bus: can0
+      id: 0x202
+      type: rm_3508
+      lp_cutoff_frequency: 150
+    right_back_wheel_motor:
+      bus: can0
+      id: 0x203
+      type: rm_3508
+      lp_cutoff_frequency: 150
     right_front_wheel_motor:
       bus: can0
       id: 0x204

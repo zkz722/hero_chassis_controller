@@ -1,6 +1,6 @@
 hero_chassis_controller:
   type: hero_chassis_controller/HeroChassisController
-  use_global_frame: true  # false为车体模式，true为世界模式
+  use_global_frame: false  # false为车体模式，true为世界模式
 
     # 底盘机械参数
   wheel_radius: 0.1       # 轮子半径 (m)
@@ -9,11 +9,12 @@ hero_chassis_controller:
 
   # 四个轮子的 PID 参数 (P, I, D, i_max, i_min)
   # P: 比例，I: 积分，D: 微分。i_clamp 用于防止积分爆炸
-  front_left_pid:  {p: 50.0, i: 0.1, d: 0.05, i_clamp_max: 50.0, i_clamp_min: -50.0}
-  front_right_pid: {p: 50.0, i: 0.1, d: 0.05, i_clamp_max: 50.0, i_clamp_min: -50.0}
-  back_left_pid:   {p: 50.0, i: 0.1, d: 0.05, i_clamp_max: 50.0, i_clamp_min: -50.0}
-  back_right_pid:  {p: 50.0, i: 0.1, d: 0.05, i_clamp_max: 50.0, i_clamp_min: -50.0}
+  front_left_pid:  {p: 0.0, i: 0.0, d: 0.0, i_clamp_max: 50.0, i_clamp_min: -50.0}
+  front_right_pid: {p: 0.0, i: 0.0, d: 0.0, i_clamp_max: 50.0, i_clamp_min: -50.0}
+  back_left_pid:   {p: 0.0, i: 0.0, d: 0.0, i_clamp_max: 50.0, i_clamp_min: -50.0}
+  back_right_pid:  {p: 0.0, i: 0.0, d: 0.0, i_clamp_max: 50.0, i_clamp_min: -50.0}
   max_accel: 0.5 # 最大加速度 (m/s^2)
+  max_effort: 3.0 # 单轮力矩硬限幅 (N·m)，安全兜底，建议先小后大
   
 
 # 保留joint_state_controller（用于发布轮子关节状态）

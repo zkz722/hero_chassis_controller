@@ -49,6 +49,7 @@ source devel/setup.bash
 ### 实车模式
 
 ```bash
+source devel/setup.bash
 roslaunch hero_chassis_controller hero_chassis_controller_real.launch
 ```
 

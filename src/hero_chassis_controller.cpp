@@ -1,6 +1,7 @@
 #include "hero_chassis_controller/hero_chassis_controller.h"
 #include <pluginlib/class_list_macros.hpp>
 #include <cmath>
+#include <algorithm>
 
 // 包含动态参数的配置头文件
 #include <hero_chassis_controller/HeroChassisControllerConfig.h>
@@ -21,36 +22,74 @@ bool HeroChassisController::init(hardware_interface::EffortJointInterface* effor
     controller_nh.param<double>("wheel_separation_x", wheel_separation_x_, 0.3);
     controller_nh.param<double>("wheel_separation_y", wheel_separation_y_, 0.3);
 
-    // 从 yaml 读取初始 PID 参数
+    // 3. 从 yaml 读取初始 PID 参数
     // NOTE: control_toolbox::Pid 没有 initParam(XmlRpcValue) 这个重载！
     //       直接传 XmlRpcValue 会被隐式转换成 std::string（operator std::string&），
     //       运行时抛 XmlRpcException: "wrong type"，导致控制器加载失败。
     //       正确做法：自己解析 XmlRpc 结构，再调用 initPid(p, i, d, i_max, i_min)。
-    auto load_pid = [&](control_toolbox::Pid& pid, const std::string& name) {
+    struct PidGains {
+        double p = 0.0, i = 0.0, d = 0.0, i_max = 0.0, i_min = 0.0;
+    };
+    PidGains gains[4];  // 0:FL 1:FR 2:BL 3:BR
+    auto read_pid = [&](int idx, const std::string& name) {
         XmlRpc::XmlRpcValue params;
         if (!controller_nh.getParam(name, params)) {
             ROS_WARN_STREAM("HeroChassisController: missing PID params '" << name << "', using zeros");
             return;
         }
-        double kp = 0.0, ki = 0.0, kd = 0.0, i_max = 0.0, i_min = 0.0;
-        if (params.hasMember("p")) kp = static_cast<double>(params["p"]);
-        if (params.hasMember("i")) ki = static_cast<double>(params["i"]);
-        if (params.hasMember("d")) kd = static_cast<double>(params["d"]);
-        if (params.hasMember("i_clamp_max")) i_max = static_cast<double>(params["i_clamp_max"]);
-        if (params.hasMember("i_clamp_min")) i_min = static_cast<double>(params["i_clamp_min"]);
-        pid.initPid(kp, ki, kd, i_max, i_min);
+        // YAML 里 p: 0 会被解析成 int，直接 static_cast<double>(XmlRpcValue) 会抛异常，
+        // 所以这里手动判断类型，int/double 都能接受。
+        auto as_double = [](const XmlRpc::XmlRpcValue& v, double def) -> double {
+            if (v.getType() == XmlRpc::XmlRpcValue::TypeDouble) return static_cast<double>(v);
+            if (v.getType() == XmlRpc::XmlRpcValue::TypeInt) return static_cast<double>(static_cast<int>(v));
+            return def;
+        };
+        auto member = [&](const char* key, double def) {
+            return params.hasMember(key) ? as_double(params[key], def) : def;
+        };
+        gains[idx].p = member("p", 0.0);
+        gains[idx].i = member("i", 0.0);
+        gains[idx].d = member("d", 0.0);
+        gains[idx].i_max = member("i_clamp_max", 0.0);
+        gains[idx].i_min = member("i_clamp_min", 0.0);
     };
-    load_pid(front_left_pid_, "front_left_pid");
-    load_pid(front_right_pid_, "front_right_pid");
-    load_pid(back_left_pid_, "back_left_pid");
-    load_pid(back_right_pid_, "back_right_pid");
+    read_pid(0, "front_left_pid");
+    read_pid(1, "front_right_pid");
+    read_pid(2, "back_left_pid");
+    read_pid(3, "back_right_pid");
 
-    // 启动动态参数服务器
+    // 4. 启动动态参数服务器
+    //    setCallback 会立刻用 .cfg 里的默认增益（P=10, I=0.1, D=0.05）覆盖 PID，
+    //    所以必须在这之后再用 yaml 的值覆盖回来，否则 yaml 里的增益根本不生效。
     ros::NodeHandle dynamic_nh(controller_nh.getNamespace() + "/hero_chassis_controller");
     dynamic_server_ = std::make_unique<dynamic_reconfigure::Server<hero_chassis_controller::HeroChassisControllerConfig>>(dynamic_nh);
     dynamic_reconfigure::Server<hero_chassis_controller::HeroChassisControllerConfig>::CallbackType cb =
         boost::bind(&HeroChassisController::dynamicReconfigureCallback, this, _1, _2);
     dynamic_server_->setCallback(cb);
+
+    // 4.1 用 yaml 的增益覆盖 .cfg 默认值，并同步回动态参数服务器
+    //     （这样 rqt_reconfigure 里显示的也是 yaml 的值）
+    front_left_pid_.initPid(gains[0].p, gains[0].i, gains[0].d, gains[0].i_max, gains[0].i_min);
+    front_right_pid_.initPid(gains[1].p, gains[1].i, gains[1].d, gains[1].i_max, gains[1].i_min);
+    back_left_pid_.initPid(gains[2].p, gains[2].i, gains[2].d, gains[2].i_max, gains[2].i_min);
+    back_right_pid_.initPid(gains[3].p, gains[3].i, gains[3].d, gains[3].i_max, gains[3].i_min);
+    {
+        // Server 没有 getConfig()，直接构造一个完整 config（12 个字段全部赋值）再 updateConfig
+        hero_chassis_controller::HeroChassisControllerConfig cfg;
+        cfg.front_left_p = gains[0].p;
+        cfg.front_left_i = gains[0].i;
+        cfg.front_left_d = gains[0].d;
+        cfg.front_right_p = gains[1].p;
+        cfg.front_right_i = gains[1].i;
+        cfg.front_right_d = gains[1].d;
+        cfg.back_left_p = gains[2].p;
+        cfg.back_left_i = gains[2].i;
+        cfg.back_left_d = gains[2].d;
+        cfg.back_right_p = gains[3].p;
+        cfg.back_right_i = gains[3].i;
+        cfg.back_right_d = gains[3].d;
+        dynamic_server_->updateConfig(cfg);
+    }
 
     // 订阅速度指令
     cmd_vel_sub_ = controller_nh.subscribe<geometry_msgs::Twist>("/cmd_vel", 10, &HeroChassisController::cmdVelCallback, this);
@@ -76,6 +115,8 @@ bool HeroChassisController::init(hardware_interface::EffortJointInterface* effor
 
     // 读取最大加速度参数
     controller_nh.param<double>("max_accel", max_accel_, 0.5);
+    // 读取单轮力矩限幅（安全兜底，单位 N·m）
+    controller_nh.param<double>("max_effort", max_effort_, 3.0);
 
     return true;
   } catch (const std::exception& e) {
@@ -89,6 +130,20 @@ void HeroChassisController::starting(const ros::Time& time) {
     front_right_pid_.reset();
     back_left_pid_.reset();
     back_right_pid_.reset();
+
+    // 清空速度平滑状态，避免沿用上一轮的值
+    current_vx_ = 0.0;
+    current_vy_ = 0.0;
+
+    // 主动把指令清成 0：防止 /cmd_vel 上残留的锁存消息（比如之前 rostopic pub -1 发过的）
+    // 在控制器刚启动时被当成有效指令，导致电机一上电就转。
+    geometry_msgs::Twist zero_cmd;
+    zero_cmd.linear.x = 0.0;
+    zero_cmd.linear.y = 0.0;
+    zero_cmd.angular.z = 0.0;
+    cmd_vel_buffer_.writeFromNonRT(zero_cmd);
+
+    ROS_INFO("HeroChassisController::starting(): PIDs reset, cmd_vel cleared to zero.");
 }
 
 void HeroChassisController::stopping(const ros::Time& time) {
@@ -195,7 +250,13 @@ void HeroChassisController::update(const ros::Time& time, const ros::Duration& p
     }
     loop_count_++;
 
-    // 下发力矩给 Gazebo
+    // 力矩硬限幅：防止 PID 输出（尤其是积分项）失控导致电机狂转
+    effort_fl = std::max(-max_effort_, std::min(max_effort_, effort_fl));
+    effort_fr = std::max(-max_effort_, std::min(max_effort_, effort_fr));
+    effort_bl = std::max(-max_effort_, std::min(max_effort_, effort_bl));
+    effort_br = std::max(-max_effort_, std::min(max_effort_, effort_br));
+
+    // 下发力矩给硬件
     front_left_joint_.setCommand(effort_fl);
     front_right_joint_.setCommand(effort_fr);
     back_left_joint_.setCommand(effort_bl);
